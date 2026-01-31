@@ -65,12 +65,351 @@ button.danger{background:var(--danger)}
 <!-- IDENTIDADE -->
 <div class="card">
   <h2>Identidade</h2>
+
   <input data-field="nome" placeholder="Nome">
   <input data-field="pronomes" placeholder="Pronomes">
-  <input data-field="identidade" placeholder="Identidade">
+
+  <input data-identidade="conceito1" placeholder="Identidade / conceito básico 01">
+  <input data-identidade="conceito2" placeholder="Identidade / conceito básico 02">
+  <input data-identidade="adjetivo1" placeholder="Identidade / adjetivo 01">
+  <input data-identidade="adjetivo2" placeholder="Identidade / adjetivo 02">
+  <input data-identidade="detalhe" placeholder="Identidade / detalhe">
+
   <input data-field="tema" placeholder="Tema">
   <input data-field="origem" placeholder="Origem">
 </div>
+
+<!-- Atributos -->
+<div class="card">
+  <h2>Atributos</h2>
+  <div class="grid-2">
+    <input type="number" data-attr="forca" placeholder="Força">
+    <input type="number" data-attr="destreza" placeholder="Destreza">
+    <input type="number" data-attr="mente" placeholder="Mente">
+    <input type="number" data-attr="vontade" placeholder="Vontade">
+  </div>
+</div>
+
+<!-- Classes -->
+<div class="card">
+  <h2>Classes</h2>
+  <div class="grid-2">
+    <button type="button" id="addClasse">+</button>
+    <button type="button" id="remClasse" class="danger">-</button>
+  </div>
+  <div id="listaClasses"></div>
+</div>
+
+<!-- Status -->
+<div class="card">
+  <h2>Status</h2>
+  <div class="grid-3">
+    <div>PV: <span id="pv"></span></div>
+    <div>PM: <span id="pm"></span></div>
+    <div>Fábula: <span id="fabula"></span></div>
+    <div>Defesa: <span id="def"></span></div>
+    <div>Def. Mágica: <span id="defm"></span></div>
+    <div>Nível Total: <span id="nivel"></span></div>
+  </div>
+</div>
+
+<!-- TRAÇOS -->
+<div class="card">
+  <h2>Traços</h2>
+  <div class="grid-2">
+    <button id="addTraco">+</button>
+    <button id="remTraco" class="danger">-</button>
+  </div>
+  <div id="listaTracos"></div>
+</div>
+
+<!-- LAÇOS -->
+<div class="card">
+  <h2>Laços</h2>
+  <div class="grid-2">
+    <button id="addLaco">+</button>
+    <button id="remLaco" class="danger">-</button>
+  </div>
+  <div id="listaLacos"></div>
+</div>
+
+<!-- INVENTÁRIO -->
+<div class="card">
+  <h2>Inventário & Mochila</h2>
+  <div class="grid-2">
+    <button id="addItem">+</button>
+    <button id="remItem" class="danger">-</button>
+  </div>
+  <div id="listaItens"></div>
+</div>
+
+<!-- HABILIDADES HEROICAS -->
+<div class="card">
+  <h2>Habilidades Heroicas</h2>
+  <div class="grid-2">
+    <button id="addHeroica">+</button>
+    <button id="remHeroica" class="danger">-</button>
+  </div>
+  <div id="listaHeroicas"></div>
+</div>
+
+<!-- RITUAIS -->
+<div class="card">
+  <h2>Rituais</h2>
+  <div class="grid-2">
+    <button id="addRitual">+</button>
+    <button id="remRitual" class="danger">-</button>
+  </div>
+  <div id="listaRituais"></div>
+</div>
+
+<!-- MAGIAS -->
+<div class="card">
+  <h2>Magias</h2>
+  <div class="grid-2">
+    <button id="addMagia">+</button>
+    <button id="remMagia" class="danger">-</button>
+  </div>
+  <div id="listaMagias"></div>
+</div>
+
+</div>
+
+<script>
+const KEY="fabulaUltimaFichaFinal";
+let fichas=JSON.parse(localStorage.getItem(KEY))||[];
+let atual=0;
+
+function fichaVazia(){
+  return{
+    nome:"",
+    pronomes:"",
+    identidade:{
+      conceito1:"",
+      conceito2:"",
+      adjetivo1:"",
+      adjetivo2:"",
+      detalhe:""
+    },
+    tema:"",
+    origem:"",
+    atributos:{ forca:8, destreza:8, mente:8, vontade:8 },
+    classes:[],
+    pvAtual:0, pmAtual:0, fabulaAtual:0,
+    tracos:[], lacos:[], inventario:[],
+    heroicas:[], rituais:[], magias:[]
+  }
+}
+
+function salvar(){
+  localStorage.setItem(KEY,JSON.stringify(fichas));
+}
+
+function nivelTotal(){
+  return fichas[atual].classes.reduce((s,c)=>s+(+c.nivel||0),0);
+}
+function pvMax(){
+  const f=fichas[atual];
+  return 20+(f.atributos.forca*5)+(nivelTotal()*5);
+}
+function pmMax(){
+  const f=fichas[atual];
+  return 10+(f.atributos.mente*5)+(nivelTotal()*5);
+}
+function defesa(){ return 10+fichas[atual].atributos.destreza }
+function defesaMagica(){ return 10+fichas[atual].atributos.vontade }
+function fabulaMax(){ return 3 }
+
+function renderStatus(){
+  pv.textContent=pvMax();
+  pm.textContent=pmMax();
+  fabula.textContent=fabulaMax();
+  def.textContent=defesa();
+  defm.textContent=defesaMagica();
+  nivel.textContent=nivelTotal();
+}
+
+function carregar(i){
+  atual=i;
+  const f=fichas[i];
+
+  // CAMPOS SIMPLES (nome, pronomes, tema, origem)
+  document.querySelectorAll("[data-field]").forEach(el=>{
+    el.value = f[el.dataset.field] ?? "";
+    el.oninput = () => {
+      f[el.dataset.field] = el.value;
+      salvar();
+      atualizarSelect();
+    };
+  });
+  
+  // IDENTIDADE ESTRUTURADA
+  document.querySelectorAll("[data-identidade]").forEach(el=>{
+    const key = el.dataset.identidade;
+    el.value = f.identidade[key] ?? "";
+  
+    el.oninput = () => {
+      f.identidade[key] = el.value;
+      salvar();
+    };
+  });
+
+  // ATRIBUTOS
+  document.querySelectorAll("[data-attr]").forEach(el=>{
+    el.value=f.atributos[el.dataset.attr];
+    el.oninput=()=>{
+      f.atributos[el.dataset.attr]=+el.value;
+      salvar();
+      renderStatus();
+    };
+  });
+
+  atualizarSelect();
+  renderClasses();
+  renderTracos();
+  renderLacos();
+  renderItens();
+  renderHeroicas();
+  renderRituais();
+  renderMagias();
+  renderStatus();
+}
+
+function atualizarSelect(){
+  sheetSelect.innerHTML="";
+  fichas.forEach((f,i)=>{
+    const o=document.createElement("option");
+    o.value=i;
+    o.text=f.nome||"Ficha sem nome";
+    if(i===atual)o.selected=true;
+    sheetSelect.appendChild(o);
+  });
+}
+
+function bloco(campos){
+  const d=document.createElement("div");
+  d.className="card";
+  campos.forEach(c=>d.appendChild(c));
+  return d;
+}
+
+function renderLista(lista,container,campos){
+  container.innerHTML="";
+  lista.forEach(obj=>{
+    const inputs=campos.map(c=>{
+      const el=c.type==="textarea"
+        ? document.createElement("textarea")
+        : document.createElement("input");
+      if(c.type) el.type=c.type;
+      el.placeholder=c.ph;
+      el.value=obj[c.key]||"";
+      el.oninput=()=>{
+        obj[c.key]=el.value;
+        salvar();
+        renderStatus();
+      };
+      return el;
+    });
+    container.appendChild(bloco(inputs));
+  });
+}
+
+function renderClasses(){
+  renderLista(fichas[atual].classes,listaClasses,[
+    {key:"nome",ph:"Nome da Classe"},
+    {key:"nivel",ph:"Nível",type:"number"}
+  ]);
+  renderStatus();
+}
+
+function renderTracos(){
+  renderLista(fichas[atual].tracos,listaTracos,[
+    {key:"nome",ph:"Nome do Traço"},
+    {key:"descricao",ph:"Descrição",type:"textarea"}
+  ]);
+}
+function renderLacos(){
+  renderLista(fichas[atual].lacos,listaLacos,[
+    {key:"alvo",ph:"Nome do Alvo"},
+    {key:"sentimento",ph:"Sentimento"}
+  ]);
+}
+function renderItens(){
+  renderLista(fichas[atual].inventario,listaItens,[
+    {key:"nome",ph:"Item"},
+    {key:"ip",ph:"Custo em IP"},
+    {key:"descricao",ph:"Descrição",type:"textarea"}
+  ]);
+}
+function renderHeroicas(){
+  renderLista(fichas[atual].heroicas,listaHeroicas,[
+    {key:"nome",ph:"Nome"},
+    {key:"gatilho",ph:"Gatilho"},
+    {key:"efeito",ph:"Efeito",type:"textarea"}
+  ]);
+}
+function renderRituais(){
+  renderLista(fichas[atual].rituais,listaRituais,[
+    {key:"nome",ph:"Nome do Ritual"},
+    {key:"disciplina",ph:"Disciplina"},
+    {key:"tempo",ph:"Tempo"},
+    {key:"requisitos",ph:"Requisitos"},
+    {key:"efeito",ph:"Efeito",type:"textarea"}
+  ]);
+}
+function renderMagias(){
+  renderLista(fichas[atual].magias,listaMagias,[
+    {key:"nome",ph:"Nome"},
+    {key:"pm",ph:"PM"},
+    {key:"alvos",ph:"Alvos"},
+    {key:"duracao",ph:"Duração"},
+    {key:"descricao",ph:"Descrição",type:"textarea"}
+  ]);
+}
+
+addClasse.onclick=()=>{
+  fichas[atual].classes.push({nome:"",nivel:1});
+  salvar();
+  renderClasses();
+};
+remClasse.onclick=()=>{
+  fichas[atual].classes.pop();
+  salvar();
+  renderClasses();
+};
+
+addTraco.onclick=()=>{fichas[atual].tracos.push({});salvar();renderTracos()};
+remTraco.onclick=()=>{fichas[atual].tracos.pop();salvar();renderTracos()};
+addLaco.onclick=()=>{fichas[atual].lacos.push({});salvar();renderLacos()};
+remLaco.onclick=()=>{fichas[atual].lacos.pop();salvar();renderLacos()};
+addItem.onclick=()=>{fichas[atual].inventario.push({});salvar();renderItens()};
+remItem.onclick=()=>{fichas[atual].inventario.pop();salvar();renderItens()};
+addHeroica.onclick=()=>{fichas[atual].heroicas.push({});salvar();renderHeroicas()};
+remHeroica.onclick=()=>{fichas[atual].heroicas.pop();salvar();renderHeroicas()};
+addRitual.onclick=()=>{fichas[atual].rituais.push({});salvar();renderRituais()};
+remRitual.onclick=()=>{fichas[atual].rituais.pop();salvar();renderRituais()};
+addMagia.onclick=()=>{fichas[atual].magias.push({});salvar();renderMagias()};
+remMagia.onclick=()=>{fichas[atual].magias.pop();salvar();renderMagias()};
+
+btnNova.onclick=()=>{
+  fichas.push(fichaVazia());
+  salvar();
+  carregar(fichas.length-1);
+};
+btnExcluir.onclick=()=>{
+  if(fichas.length<=1)return;
+  fichas.splice(atual,1);
+  salvar();
+  carregar(0);
+};
+sheetSelect.onchange=e=>carregar(+e.target.value);
+
+if(fichas.length===0)fichas.push(fichaVazia());
+carregar(0);
+</script>
+
+</body>
+</html></div>
 
 <!-- Atributos -->
 <div class="card">
